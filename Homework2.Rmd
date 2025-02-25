@@ -1,0 +1,101 @@
+---
+title: "Homework2"
+output: html_document
+date: "2025-02-22"
+---
+
+```{r setup, include=FALSE}
+
+NBA = read.csv("https://raw.githubusercontent.com/Rmwolff2/NBAdata/refs/heads/main/NBAStats.csv")
+
+library(shiny)
+library(tidyverse)
+library(bslib)
+
+```
+
+
+
+```{r}
+ui = fluidPage(
+  theme = bs_theme(bootswatch = "cyborg"),
+  titlePanel(
+    title = div("The Numbers Don't Lie: 2023-2024 NBA Playoffs", style = "font-size: 22px;")
+  ),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("stat", "Select Statistic:", 
+                  choices = c("Points Per Game" = "PPG", 
+                              "Rebounds Per Game" = "RPG", 
+                              "Assists Per Game" = "APG", 
+                              "Steals Per Game" = "SPG", 
+                              "Blocks Per Game" = "BPG", 
+                              "Turnovers Per Game" = "TO."),
+                  selected = "PPG"),
+      checkboxGroupInput("team", "Select Team:", 
+                     choices = c("New York Knicks" = "Nyk", 
+                        "Oklahoma City Thunder" = "Okc", 
+                        "Dallas Mavericks" = "Dal", 
+                        "Phoenix Suns" = "Pho", 
+                        "Boston Celtics" = "Bos", 
+                        "Denver Nuggets" = "Den", 
+                        "Los Angeles Clippers" = "Lac", 
+                        "Indiana Pacers" = "Ind", 
+                        "New Orleans Pelicans" = "Nor", 
+                        "Los Angeles Lakers" = "Lal", 
+                        "Cleveland Cavaliers" = "Cle", 
+                        "Philadelphia 76ers" = "Phi", 
+                        "Orlando Magic" = "Orl", 
+                        "Minnesota Timberwolves" = "Min", 
+                        "Miami Heat" = "Mia", 
+                        "Milwaukee Bucks" = "Mil"), 
+            selected = "Phi"),
+      checkboxGroupInput("position", "Select Position:", 
+                  choices = c(  "Guard" = "G", 
+                              "Forward" = "F", 
+                              "Center" = "C"), 
+                  selected = "G"),
+       style = "height: 670px;" 
+    ),
+   mainPanel(
+      plotOutput("statPlot", height = "575px"),
+      p("Select the teams, positions, and the statistic you are interested in! Players on the same team share the same color and positions are sperated by graph.", 
+        style = "text-align: center; font-size: 18px; font-weight: bold;")
+    )
+  )  
+)
+server = function(input, output,session) {
+     observeEvent(c(input$team, input$position), {
+      if (length(input$team) * length(input$position) >= 7) {
+        showNotification("Teams Selected * Positions can not exceed 6!", type = "error")
+        if (length(input$team) > 1) {
+          updateCheckboxGroupInput(session, "team", selected = input$team[-length(input$team)])
+        } else if (length(input$position) > 1) {
+          updateCheckboxGroupInput(session, "position", selected = input$position[-length(input$position)])
+        }
+      }
+    })
+
+  filtered_data = reactive({
+    NBA %>%
+       filter(TEAM %in% input$team, POS %in% input$position)
+  })
+output$statPlot = renderPlot({
+  ggplot(filtered_data(), aes(x = reorder(NAME, !!sym(input$stat)), y = !!sym(input$stat), fill = TEAM)) +
+    geom_col(show.legend = FALSE) +
+    theme_dark()+
+    labs(
+        title = "Here are the play off specific stat averages from the players that fit your team and position criteria!",
+        x = "Player", 
+        y = input$stat
+      ) +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1),
+            plot.title = element_text(size = 15, face = "bold")  
+    )+
+  facet_wrap(~POS) 
+  }) 
+}
+shinyApp(ui, server)
+```
+
+
